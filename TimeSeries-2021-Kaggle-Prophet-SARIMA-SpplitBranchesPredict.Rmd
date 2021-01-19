@@ -1,0 +1,1124 @@
+---
+jupyter:
+  jupytext:
+    formats: ipynb,Rmd
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.9.1
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+# Time Series - 2021 Kaggle
+
+By Vivian Zeng
+
+U of Notre Dame
+
+```{python}
+import pandas as pd
+from fbprophet.diagnostics import cross_validation
+```
+
+# Get the Data
+
+```{python}
+# %matplotlib inline
+
+kaggle = pd.read_csv("kaggle.csv")
+kaggle.head()
+```
+
+```{python}
+kaggle=kaggle.drop(kaggle.columns[0], axis=1)
+kaggle.head()
+```
+
+```{python}
+kaggle.info()
+```
+
+```{python active="", eval=FALSE}
+171229 days 
+```
+
+```{python}
+# Convert date to a datetime object
+kaggle.BusinessDate = pd.to_datetime(kaggle.BusinessDate)
+kaggle.head()
+```
+
+```{python}
+kaggle[['BusinessDate']].info()
+```
+
+```{python}
+# Set date to be index
+kaggle.set_index('BusinessDate', inplace = True)
+kaggle.index
+```
+
+```{python}
+kaggle.head()
+```
+
+```{python}
+# Plot the some cash columns
+# %matplotlib inline
+kaggle[['CashOrdersReceived', 
+         'TotalCashUsed', 
+         'TotalCashDisbursed']].plot(rot = 45, 
+                                figsize = (15, 10), 
+                                marker = ".", 
+                                alpha = 0.4,
+                                title = "Cash")
+```
+
+```{python}
+# Some verage monthly cash columns
+#kaggle.resample('M').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+```{python}
+# Average CashOrdersReceived based on year
+#kaggle.resample('Y').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+```{python}
+# Average CashOrdersReceived based on month
+#kaggle.resample('M').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+```{python}
+# Average CashOrdersReceived based on quarter
+#kaggle.resample('3M').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+# Setup train datasets
+
+```{python}
+kaggle.head(2)
+```
+
+# Set train based on the entire dataframe
+
+```{python}
+# Extract data from '2019-01-01' to '2020-07-31' as train
+train=kaggle.loc['2019-01-01':'2020-07-31']
+```
+
+```{python}
+train.head(2)
+```
+
+```{python}
+# Reset the index to bring date in as column
+train.reset_index(inplace = True)
+train.head(2)
+```
+
+```{python}
+print (train.BusinessDate.min())
+print (train.BusinessDate.max())
+```
+
+```{python}
+# Extract only the variables of interest
+train = train[['BusinessDate', 'BranchID','TotalCashUsed']]
+train.head()
+```
+
+```{python}
+# Rename the columns as necessary
+train.rename({'BusinessDate': 'ds', 'TotalCashUsed':'y'}, 
+             axis = 'columns',
+             inplace = True)
+train.head()
+```
+
+```{python}
+# Import Prophet
+from fbprophet import Prophet
+import plotly
+
+# Create a new Prophet object
+model = Prophet(yearly_seasonality=True, daily_seasonality=True)
+print(model)
+
+# Fit the model to the historical data
+model.fit(train)
+```
+
+```{python}
+# Create DataFrame with future dates to predict at (08-01-2020 to 11-30-2020, 122 days in total)
+future = model.make_future_dataframe(periods=122)
+future.tail()
+```
+
+```{python}
+# Make predictions for next 122 days
+#forecast = model.predict(future)
+#forecast.head()
+```
+
+ds - the timestamps
+
+yhat - the predictions
+
+yhat_lower - the lower bound of the prediction interval
+
+yhat_upper - the upper bound of the prediction interval
+
+```{python}
+# Extract the desired components
+#forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail()
+```
+
+```{python}
+# Plot the model fit and predictions
+# forecast_plot = model.plot(forecast, 
+                           # xlabel = 'Time', 
+                           # ylabel = 'Cash')
+```
+
+```{python}
+#forecast['weekday_name'] = forecast['ds'].dt.day_name()
+#forecast.head()
+```
+
+```{python}
+# Decompose the time-series into Seasonal and Non-Seasonal components
+#components_plot = model.plot_components(forecast)
+```
+
+## Set train based on Covid time frame
+
+```{python}
+# Extract data from '2020-01-01' to '2020-07-31' as train
+train_covid=kaggle.loc['2020-01-01':'2020-07-31']
+```
+
+```{python}
+# Reset the index to bring date in as column
+train_covid.reset_index(inplace = True)
+train_covid.head()
+```
+
+```{python}
+print (train_covid.BusinessDate.min())
+print (train_covid.BusinessDate.max())
+```
+
+```{python}
+# Extract only the variables of interest
+train_covid = train_covid[['BusinessDate', 'BranchID','TotalCashUsed']]
+train_covid.head()
+# Rename the columns as necessary
+train_covid.rename({'BusinessDate': 'ds', 'TotalCashUsed':'y'}, 
+             axis = 'columns',
+             inplace = True)
+train_covid.head()
+```
+
+```{python}
+print (train_covid.ds.min())
+print (train_covid.ds.max())
+```
+
+```{python}
+#from fbprophet import Prophet
+#import plotly
+
+# Create a new Prophet object
+model_covid = Prophet(yearly_seasonality=True, daily_seasonality=True)
+print(model_covid)
+
+# Fit the model to the historical data
+model_covid.fit(train_covid)
+```
+
+```{python}
+future_covid = model_covid.make_future_dataframe(periods=122)
+future_covid.tail(2)
+```
+
+```{python}
+# Make predictions for next 122 days
+#forecast_covid = model_covid.predict(future_covid)
+#forecast_covid.head()
+```
+
+```{python}
+#print (forecast_covid.ds.min())
+#print (forecast_covid.ds.max())
+# Extract the desired components
+# forecast_covid[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail()
+```
+
+```{python}
+# Extract the desired components
+# forecast_covid[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail()
+```
+
+```{python}
+# Plot the model fit and predictions
+#forecast_covid_plot = model_covid.plot(forecast_covid, 
+                                       #xlabel = 'Time', 
+                                       #ylabel = 'Cash')
+```
+
+## Compare the predicts based on train and train_covid
+
+```{python}
+# Plot the some cash columns
+# #%matplotlib inline
+#forecast.tail(300).yhat.plot(rot = 45, 
+                                #figsize = (15, 10), 
+                                #marker = ".", 
+                                #alpha = 0.4,
+                                #title = "Cash based on All")
+```
+
+```{python}
+# Plot the some cash columns
+# # %matplotlib inline
+#forecast_covid.tail(300).yhat.plot(rot = 45, 
+                                #figsize = (15, 10), 
+                                #marker = ".", 
+                                #alpha = 0.4,
+                                #title = "Cash based on Covid")
+```
+
+# Dig into EDA for data during covid time frame
+
+```{python}
+#covid=kaggle.loc['2020-01-01':'2020-07-31']
+```
+
+```{python}
+#kaggle.head()
+```
+
+```{python}
+#covid.head()
+```
+
+```{python}
+# Plot the some cash columns
+# #%matplotlib inline
+#covid[['TotalCashUsed']].plot(rot = 45, 
+                                #figsize = (15, 10), 
+                                #marker = ".", 
+                                #alpha = 0.4,
+                                #title = "Cash")
+```
+
+```{python}
+# Some average monthly cash columns
+#covid.resample('M').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+```{python}
+# Some average weekly cash columns
+#covid.resample('W').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+```{python}
+# Some average 3d cash columns
+#covid.resample('3d').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+# EDA for mixed pure covid and nomal train data
+
+```{python}
+normal_covid=kaggle.loc['2019-01-01':'2020-07-31']
+```
+
+```{python}
+# Some average 3d cash columns
+#normal_covid.resample('3d').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+```{python}
+# Some average week cash columns
+#normal_covid.resample('w').agg({'TotalCashUsed':'mean'}).plot(figsize = (10,8))
+```
+
+```{python}
+# Plot the some cash columns
+# #%matplotlib inline
+#normal_covid[['TotalCashUsed']].plot(rot = 45, 
+                                #figsize = (15, 10), 
+                                #marker = ".", 
+                                #alpha = 0.4,
+                                #title = "Cash")
+```
+
+# Predict based on mixed train based on normal and covid train
+
+```{python}
+# Reset the index to bring date in as column
+normal_covid.reset_index(inplace = True)
+normal_covid.head()
+# Extract only the variables of interest
+normal_covid_train = normal_covid[['BusinessDate', 'BranchID','TotalCashUsed']]
+normal_covid_train.head()
+```
+
+```{python}
+# Rename the columns as necessary
+normal_covid_train.rename({'BusinessDate': 'ds', 'TotalCashUsed':'y'}, 
+             axis = 'columns',
+             inplace = True)
+normal_covid_train.head()
+```
+
+```{python}
+# Create a new Prophet object
+model_nc = Prophet(yearly_seasonality=True, daily_seasonality=True)
+print(model_nc)
+
+# Fit the model to the historical data
+model_nc.fit(normal_covid_train)
+```
+
+```{python}
+# Create DataFrame with future dates to predict at (08-01-2020 to 11-30-2020, 122 days in total)
+future_nc = model_nc.make_future_dataframe(periods=122)
+future_nc.tail(2)
+```
+
+```{python}
+# Make predictions for next 122 days
+#forecast_nc = model_nc.predict(future_nc)
+#forecast_nc.head()
+```
+
+```{python}
+# Plot the model fit and predictions
+#forecast_plot = model_nc.plot(forecast_nc, 
+                           #xlabel = 'Time', 
+                           #ylabel = 'Cash')
+```
+
+```{python}
+# Plot the some cash columns
+# #%matplotlib inline
+#forecast_nc.tail(300).yhat.plot(rot = 45, 
+                                #figsize = (15, 10), 
+                                #marker = ".", 
+                                #alpha = 0.4,
+                                #title = "Cash based on mixture of covid and normal")
+```
+
+```{python}
+# Plot the some cash columns
+# #%matplotlib inline
+#forecast.tail(300).yhat.plot(rot = 45, 
+                                #figsize = (15, 10), 
+                                #marker = ".", 
+                                #alpha = 0.4,
+                                #title = "Cash based on All")
+```
+
+```{python}
+#forecast.yhat.describe()
+```
+
+```{python}
+#forecast_nc.yhat.describe()
+```
+
+# Forcasting based on BranchID
+
+
+## Train based on entire time frame
+
+```{python}
+df = train.groupby('BranchID').filter(lambda x: len(x) > 2)
+
+df.BranchID = df.BranchID.astype(str)
+
+final = pd.DataFrame(columns=['BranchID','ds','yhat'])
+
+grouped = df.groupby('BranchID')
+for g in grouped.groups:
+    group = grouped.get_group(g)
+    m = Prophet(yearly_seasonality=True, daily_seasonality=True)
+    m.fit(group)
+    future = m.make_future_dataframe(periods=122)
+    forecast = m.predict(future)
+    #I added a column with BranchID id
+    forecast['BranchID'] = g
+    #I used concat instead of merge
+    final = pd.concat([final, forecast], ignore_index=True)
+
+final.head(10)
+```
+
+```{python}
+print (final.ds.min())
+print (final.ds.max())
+```
+
+```{python}
+final.shape
+```
+
+```{python}
+final['future']=0
+final.head()
+```
+
+```{python}
+final.iloc[-122:,].future=1
+```
+
+```{python}
+#Extract the desired components
+final[['BranchID', 'ds', 'yhat', 'yhat_lower', 'yhat_upper', 'future']].tail()
+```
+
+```{python}
+len(final.BranchID.unique())
+```
+
+```{python}
+forecast_plot = model.plot(final,
+                           xlabel = 'Time', 
+                           ylabel = 'Cash')
+```
+
+```{python}
+# %matplotlib inline
+final.tail(300).yhat.plot(rot = 45, 
+                          figsize = (15, 10),
+                          marker = ".",
+                          alpha = 0.4,
+                          title = "Cash based on All")
+```
+
+```{python}
+from matplotlib import pyplot as plt
+```
+
+```{python}
+#fig = plt.figure(figsize=(15,10))
+#fig.set_dpi(300)
+
+#present_data = final.loc[final['future'] == 0]
+#future_data = final.loc[final['future'] == 1]
+
+#present_data.groupby('BranchID')['yhat'].plot(legend='True')
+#future_data.groupby('BranchID')['yhat'].plot(style='--')
+
+#plt.legend(loc='center left', ncol=5, bbox_to_anchor=(1, 0.5), fancybox=True)
+#plt.show()
+```
+
+```{python}
+fig, ax = plt.subplots(figsize=(15,15))
+plt.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+for key, data in final.groupby('BranchID'):
+    data.plot(x='ds', y='yhat', ax=ax, label=key)
+    
+```
+
+```{python}
+final.groupby('BranchID').yhat.describe()
+```
+
+```{python}
+#pip install jupytext --upgrade
+```
+
+```{python}
+#####
+```
+
+```{python}
+final.to_csv('kaggle_ver1', index=False)
+```
+
+```{python}
+final.shape
+```
+
+```{python}
+177208-171230
+```
+
+```{python}
+output = final[['ds', 'BranchID','yhat']]
+```
+
+```{python}
+output.head()
+```
+
+```{python}
+output=output.tail(122*49)
+```
+
+```{python}
+output.head()
+```
+
+```{python}
+#output.head()
+```
+
+```{python}
+#output['Date_Branch'] = output[['yhat', 'BranchID']].agg('-'.join, axis=1)
+```
+
+```{python}
+output.head()
+```
+
+# Smooth
+
+```{python}
+import warnings                                  # `do not disturbe` mode
+warnings.filterwarnings('ignore')
+
+import numpy as np                               # vectors and matrices
+import pandas as pd                              # tables and data manipulations
+import matplotlib.pyplot as plt                  # plots
+import seaborn as sns                            # more plots
+
+from dateutil.relativedelta import relativedelta # working with dates with style
+from scipy.optimize import minimize              # for function minimization
+
+import statsmodels.formula.api as smf            # statistics and econometrics
+import statsmodels.tsa.api as smt
+import statsmodels.api as sm
+import scipy.stats as scs
+
+from itertools import product                    # some useful functions
+from tqdm import tqdm_notebook
+
+
+# %matplotlib inline
+```
+
+```{python}
+train.head()
+```
+
+```{python}
+kaggle.head()
+```
+
+```{python}
+# %matplotlib inline
+kaggle.loc['2019-01-01':'2020-07-31'].TotalCashUsed.plot(rot = 45, 
+                                figsize = (15, 10), 
+                                marker = ".", 
+                                alpha = 0.4,
+                                title = "Cash")
+```
+
+```{python}
+plt.figure(figsize=(15, 7))
+plt.plot(kaggle.loc['2019-01-01':'2020-07-31'].TotalCashUsed)
+plt.title('TotalCashUsed')
+plt.grid(True)
+plt.show()
+```
+
+# Forecast quality metrics
+
+R squared: coefficient of determination (in econometrics, this can be interpreted as the percentage of variance explained by the model),  (−∞,1]
+
+R2=1−SS(res)/SS(tot)
+
+```{python}
+#sklearn.metrics.r2_score
+```
+
+Mean Absolute Error: this is an interpretable metric because it has the same unit of measurment as the initial series,  [0,+∞) 
+
+MAE=SUM(|yi-yi^|)/n
+
+```{python}
+#sklearn.metrics.mean_absolute_error
+```
+
+Median Absolute Error: again, an interpretable metric that is particularly interesting because it is robust to outliers,  [0,+∞) 
+
+MedAE=median(|y1−ŷ1|,...,|yn−ŷn|)
+
+```{python}
+#sklearn.metrics.median_absolute_error
+```
+
+Mean Squared Error: the most commonly used metric that gives a higher penalty to large errors and vice versa,  [0,+∞)
+
+MSE=1/n∑(yi−ŷi)2
+
+```{python}
+#sklearn.metrics.mean_squared_error
+```
+
+Mean Squared Logarithmic Error: practically, this is the same as MSE, but we take the logarithm of the series. As a result, we give more weight to small mistakes as well. This is usually used when the data has exponential trends,  [0,+∞)
+
+MSLE=1/n∑(log(1+yi)−log(1+ŷi))2
+
+```{python}
+#sklearn.metrics.mean_squared_log_error
+```
+
+<!-- #region -->
+Mean Absolute Percentage Error: this is the same as MAE but is computed as a percentage, which is very convenient when you want to explain the quality of the model to management,  [0,+∞) 
+
+
+MAPE=100/n∑(|yi−ŷi|/yi)
+<!-- #endregion -->
+
+```{python}
+# def mean_absolute_percentage_error(y_true, y_pred): 
+    #return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+```
+
+```{python}
+# Importing everything from above
+
+from sklearn.metrics import r2_score, median_absolute_error, mean_absolute_error
+from sklearn.metrics import median_absolute_error, mean_squared_error, mean_squared_log_error
+
+def mean_absolute_percentage_error(y_true, y_pred): 
+    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+```
+
+# Move, smoothe, evaluate
+
+
+Simple hypothesis: "Total cash used tomorrow will be the same as today". However, instead of a model like
+ŷt=yt−1  (which is actually a great baseline for any time series prediction problems and sometimes is impossible to beat), we will assume that the future value of our variable depends on the average of its  k  previous values. Therefore, we will use the moving average.
+
+Moving Average:
+
+ŷt=(1/k)(∑yt−n)
+
+```{python}
+# def moving_average(series, n):
+#     """
+#         Calculate average of last n observations
+#     """
+#     return np.average(series[-n:])
+
+# print(moving_average(kaggle, 8760)) # prediction for the last observed year (past 8760 hours or a year)
+# print(moving_average(kaggle, 24)) # prediction for the last observed day (past 24 hours/a day)
+# print(moving_average(kaggle, 720)) # prediction for the last observed day (30 days)
+# print(moving_average(kaggle, 15000)) # prediction for the 15000 observed hour 
+# #(try to get past 8760 hours or 3865 days in train, but the maxmium seems 15000)
+# # averave based on 30 days is close to the total average
+```
+
+Unfortunately, we cannot make predictions far in the future -- in order to get the value for the next step, we need the previous values to be actually observed. But moving average has another use case - smoothing the original time series to identify trends. Pandas has an implementation available with DataFrame.rolling(window).mean(). The wider the window, the smoother the trend. 
+
+In the case of very noisy data, which is often encountered in finance, this procedure can help detect common patterns.
+
+```{python}
+# def plotMovingAverage(series, window, plot_intervals=False, scale=1.96, plot_anomalies=False):
+
+#     """
+#         series - dataframe with timeseries
+#         window - rolling window size 
+#         plot_intervals - show confidence intervals
+#         plot_anomalies - show anomalies 
+
+#     """
+#     rolling_mean = series.rolling(window=window).mean()
+
+#     plt.figure(figsize=(15,5))
+#     plt.title("Moving average\n window size = {}".format(window))
+#     plt.plot(rolling_mean, "g", label="Rolling mean trend")
+
+#     # Plot confidence intervals for smoothed values
+#     if plot_intervals:
+#         mae = mean_absolute_error(series[window:], rolling_mean[window:])
+#         deviation = np.std(series[window:] - rolling_mean[window:])
+#         lower_bond = rolling_mean - (mae + scale * deviation)
+#         upper_bond = rolling_mean + (mae + scale * deviation)
+#         plt.plot(upper_bond, "r--", label="Upper Bond / Lower Bond")
+#         plt.plot(lower_bond, "r--")
+        
+#         # Having the intervals, find abnormal values
+#         if plot_anomalies:
+#             anomalies = pd.DataFrame(index=series.index, columns=series.columns)
+#             anomalies[series<lower_bond] = series[series<lower_bond]
+#             anomalies[series>upper_bond] = series[series>upper_bond]
+#             plt.plot(anomalies, "ro", markersize=10)
+        
+#     plt.plot(series[window:], label="Actual values")
+#     plt.legend(loc="upper left")
+#     plt.grid(True)
+```
+
+Smooth by the previous 7 days.
+
+```{python}
+# 7days smooth
+#train1=plotMovingAverage(kaggle.loc['2010-01-01':'2020-07-31'].TotalCashUsed, 168) 
+```
+
+```{python}
+plotMovingAverage(kaggle.loc['2010-01-01':'2020-07-31'].TotalCashUsed, 168, plot_intervals=True)
+```
+
+Now, let's create a simple anomaly detection system with the help of moving average. 
+
+```{python}
+plotMovingAverage(kaggle.loc['2010-01-01':'2020-07-31'].TotalCashUsed, 168, plot_anomalies=True)
+```
+
+Weighted average is a simple modification to the moving average. The weights sum up to 1 with larger weights assigned to more recent observations.
+
+ŷt=∑(ωn*yt+1−n)
+
+```{python}
+def weighted_average(series, weights):
+    """
+        Calculate weighted average on the series.
+        Assuming weights are sorted in descending order
+        (larger weights are assigned to more recent observations).
+    """
+    result = 0.0
+    for n in range(len(weights)):
+        result += series.iloc[-n-1] * weights[n]
+    return float(result)
+```
+
+# SMOOTH
+
+
+Single Exponential Smoothing
+
+```{python}
+
+# single exponential smoothing
+from statsmodels.tsa.holtwinters import SimpleExpSmoothing
+# prepare data
+data = train
+# create class
+model = SimpleExpSmoothing(data)
+# fit model
+train1 = model.fit(train)
+# make prediction
+#yhat = model_fit.predict(...)
+
+```
+
+```{python}
+train1.head()
+```
+
+```{python}
+from statsmodels.tsa.stattools import adfuller
+import warnings
+import itertools
+import numpy as np
+import matplotlib.pyplot as plt
+warnings.filterwarnings("ignore")
+plt.style.use('fivethirtyeight')
+import pandas as pd
+import statsmodels.api as sm
+import matplotlib
+matplotlib.rcParams['axes.labelsize'] = 14
+matplotlib.rcParams['xtick.labelsize'] = 12
+matplotlib.rcParams['ytick.labelsize'] = 12
+matplotlib.rcParams['text.color'] = 'G'
+```
+
+```{python}
+test_result=adfuller(kaggle.loc['2019-01-01':'2020-07-31'].TotalCashUsed)
+```
+
+```{python}
+test_result[1] <= 0.05
+```
+
+```{python}
+#kaggle.head()
+```
+
+```{python}
+def adfuller_test(TotalCashUsed):
+    result=adfuller(TotalCashUsed)
+    labels = ['ADF Test Statistic','p-value','#Lags Used','Number of Observations']
+    for value,label in zip(result,labels):
+        print(label+' : '+str(value) )
+        if result[1] <= 0.05:
+            print("strong evidence against the null hypothesis(Ho), reject the null hypothesis. Data is stationary")
+        else:
+            print("weak evidence against null hypothesis,indicating it is non-stationary ")
+adfuller_test(kaggle.loc['2019-01-01':'2020-07-31'].TotalCashUsed)
+```
+
+```{python}
+train1=kaggle.loc['2019-01-01':'2020-07-31'][['TotalCashUsed']]
+```
+
+```{python}
+train1.head()
+```
+
+```{python}
+#from pylab import rcParams
+#rcParams['figure.figsize'] = 18, 8
+#decomposition = sm.tsa.seasonal_decompose(kaggle.loc['2019-01-01':'2020-07-31'].dropna(), model='additive')
+#fig = decomposition.plot()
+#plt.show()
+```
+
+```{python}
+p = d = q = range(0, 2)
+pdq = list(itertools.product(p, d, q))
+seasonal_pdq = [(x[0], x[1], x[2], 12) for x in list(itertools.product(p, d, q))]
+print('Examples of parameter for SARIMA...')
+print('SARIMAX: {} x {}'.format(pdq[1], seasonal_pdq[1]))
+print('SARIMAX: {} x {}'.format(pdq[1], seasonal_pdq[2]))
+print('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[3]))
+print('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[4]))
+```
+
+```{python}
+# mod2 = sm.tsa.statespace.SARIMAX(train1,order=(2,2,2),seasonal_order=(1,1,1,12),enforce_stationarity=False,enforce_invertibility=False)
+# results2 = mod2.fit()
+# print('ARIMA{}x{}12 - AIC:{}'.format((2,2,2),(1,1,1,12),results2.aic))
+```
+
+```{python}
+for param in pdq:
+    for param_seasonal in seasonal_pdq:
+        #try:
+            mod = sm.tsa.statespace.SARIMAX(train1,order=param,seasonal_order=param_seasonal,enforce_stationarity=False,enforce_invertibility=False)
+            results = mod.fit()
+            print('ARIMA{}x{}12 - AIC:{}'.format(param,param_seasonal,results.aic))
+        #except: 
+            #continue
+```
+
+```{python}
+mod = sm.tsa.statespace.SARIMAX(train1,
+                                order=(1, 1, 1),
+                                seasonal_order=(1, 0, 1, 12),
+                                enforce_stationarity=False,
+                                enforce_invertibility=False)
+results = mod.fit()
+print(results.summary().tables[1])
+```
+
+```{python}
+results.plot_diagnostics(figsize=(18, 8))
+plt.show()
+```
+
+```{python}
+train1.shape
+```
+
+```{python}
+pred = results.get_prediction(start=252, end=375, dynamic=False)
+pred_ci = pred.conf_int()
+ax = train1['2019':].plot(label='observed')
+pred.predicted_mean.plot(ax=ax, label='One-step ahead Forecast', alpha=.7, figsize=(14, 4))
+ax.fill_between(pred_ci.index,
+                pred_ci.iloc[:, 0],
+                pred_ci.iloc[:, 1], color='k', alpha=.2)
+ax.set_xlabel('Date')
+ax.set_ylabel('Retail_sold')
+plt.legend()
+plt.show()
+```
+
+```{python}
+results
+```
+
+# Time series cross validation
+
+
+Now, knowing how to set up cross-validation, we can find the optimal parameters for the Holt-Winters model. Recall that we have daily seasonality in ads, hence the slen=24 parameter.
+
+```{python}
+# from sklearn.model_selection import TimeSeriesSplit # you have everything done for you
+
+# def timeseriesCVscore(params, series, loss_function=mean_squared_error, slen=24):
+#     """
+#         Returns error on CV  
+        
+#         params - vector of parameters for optimization
+#         series - dataset with timeseries
+#         slen - season length for Holt-Winters model
+#     """
+#     # errors array
+#     errors = []
+    
+#     values = series.values
+#     alpha, beta, gamma = params
+    
+#     # set the number of folds for cross-validation
+#     tscv = TimeSeriesSplit(n_splits=3) 
+    
+#     # iterating over folds, train model on each, forecast and calculate error
+#     for train, test in tscv.split(values):
+
+#         model = HoltWinters(series=values[train], slen=slen, 
+#                             alpha=alpha, beta=beta, gamma=gamma, n_preds=len(test))
+#         model.triple_exponential_smoothing()
+        
+#         predictions = model.result[-len(test):]
+#         actual = values[test]
+#         error = loss_function(predictions, actual)
+#         errors.append(error)
+        
+#     return np.mean(np.array(errors))
+```
+
+In the Holt-Winters model, as well as in the other models of exponential smoothing, there's a constraint on how large the smoothing parameters can be, each of them ranging from 0 to 1. Therefore, in order to minimize our loss function, we have to choose an algorithm that supports constraints on model parameters. In our case, we will use the truncated Newton conjugate gradient.
+
+```{python}
+# class HoltWinters:
+    
+#     """
+#     Holt-Winters model with the anomalies detection using Brutlag method
+    
+#     # series - initial time series
+#     # slen - length of a season
+#     # alpha, beta, gamma - Holt-Winters model coefficients
+#     # n_preds - predictions horizon
+#     # scaling_factor - sets the width of the confidence interval by Brutlag (usually takes values from 2 to 3)
+    
+#     """
+    
+    
+#     def __init__(self, series, slen, alpha, beta, gamma, n_preds, scaling_factor=1.96):
+#         self.series = series
+#         self.slen = slen
+#         self.alpha = alpha
+#         self.beta = beta
+#         self.gamma = gamma
+#         self.n_preds = n_preds
+#         self.scaling_factor = scaling_factor
+        
+        
+#     def initial_trend(self):
+#         sum = 0.0
+#         for i in range(self.slen):
+#             sum += float(self.series[i+self.slen] - self.series[i]) / self.slen
+#         return sum / self.slen  
+    
+#     def initial_seasonal_components(self):
+#         seasonals = {}
+#         season_averages = []
+#         n_seasons = int(len(self.series)/self.slen)
+#         # let's calculate season averages
+#         for j in range(n_seasons):
+#             season_averages.append(sum(self.series[self.slen*j:self.slen*j+self.slen])/float(self.slen))
+#         # let's calculate initial values
+#         for i in range(self.slen):
+#             sum_of_vals_over_avg = 0.0
+#             for j in range(n_seasons):
+#                 sum_of_vals_over_avg += self.series[self.slen*j+i]-season_averages[j]
+#             seasonals[i] = sum_of_vals_over_avg/n_seasons
+#         return seasonals   
+
+          
+#     def triple_exponential_smoothing(self):
+#         self.result = []
+#         self.Smooth = []
+#         self.Season = []
+#         self.Trend = []
+#         self.PredictedDeviation = []
+#         self.UpperBond = []
+#         self.LowerBond = []
+        
+#         seasonals = self.initial_seasonal_components()
+        
+#         for i in range(len(self.series)+self.n_preds):
+#             if i == 0: # components initialization
+#                 smooth = self.series[0]
+#                 trend = self.initial_trend()
+#                 self.result.append(self.series[0])
+#                 self.Smooth.append(smooth)
+#                 self.Trend.append(trend)
+#                 self.Season.append(seasonals[i%self.slen])
+                
+#                 self.PredictedDeviation.append(0)
+                
+#                 self.UpperBond.append(self.result[0] + 
+#                                       self.scaling_factor * 
+#                                       self.PredictedDeviation[0])
+                
+#                 self.LowerBond.append(self.result[0] - 
+#                                       self.scaling_factor * 
+#                                       self.PredictedDeviation[0])
+#                 continue
+                
+#             if i >= len(self.series): # predicting
+#                 m = i - len(self.series) + 1
+#                 self.result.append((smooth + m*trend) + seasonals[i%self.slen])
+                
+#                 # when predicting we increase uncertainty on each step
+#                 self.PredictedDeviation.append(self.PredictedDeviation[-1]*1.01) 
+                
+#             else:
+#                 val = self.series[i]
+#                 last_smooth, smooth = smooth, self.alpha*(val-seasonals[i%self.slen]) + (1-self.alpha)*(smooth+trend)
+#                 trend = self.beta * (smooth-last_smooth) + (1-self.beta)*trend
+#                 seasonals[i%self.slen] = self.gamma*(val-smooth) + (1-self.gamma)*seasonals[i%self.slen]
+#                 self.result.append(smooth+trend+seasonals[i%self.slen])
+                
+#                 # Deviation is calculated according to Brutlag algorithm.
+#                 self.PredictedDeviation.append(self.gamma * np.abs(self.series[i] - self.result[i]) 
+#                                                + (1-self.gamma)*self.PredictedDeviation[-1])
+                     
+#             self.UpperBond.append(self.result[-1] + 
+#                                   self.scaling_factor * 
+#                                   self.PredictedDeviation[-1])
+
+#             self.LowerBond.append(self.result[-1] - 
+#                                   self.scaling_factor * 
+#                                   self.PredictedDeviation[-1])
+
+#             self.Smooth.append(smooth)
+#             self.Trend.append(trend)
+#             self.Season.append(seasonals[i%self.slen])
+```
+
+```{python}
+# # %%time
+# data = train.y[:-20] # leave some data for testing
+
+# # initializing model parameters alpha, beta and gamma
+# x = [0, 0, 0] 
+
+# # Minimizing the loss function 
+# opt = minimize(timeseriesCVscore, x0=x, 
+#                args=(data, mean_squared_log_error), 
+#                method="TNC", bounds = ((0, 1), (0, 1), (0, 1))
+#               )
+
+# # Take optimal values...
+# alpha_final, beta_final, gamma_final = opt.x
+# print(alpha_final, beta_final, gamma_final)
+
+# # ...and train the model with them, forecasting for the next 2928 hours
+# model = HoltWinters(data, slen = 24, 
+#                     alpha = alpha_final, 
+#                     beta = beta_final, 
+#                     gamma = gamma_final, 
+#                     n_preds = 2928, scaling_factor = 3)
+# model.triple_exponential_smoothing()
+```
+
+```{python}
+
+```
